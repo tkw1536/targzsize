@@ -1,23 +1,10 @@
-// Command targzsize computes the total unpacked size of a set of tar.gz archives.
-//
-//   targzsize [-no-progress] [-human] path [path...]
-//
-// Targzsize iterates over the provides paths and computes the unpacked size of each file within the packages archives.
-// It then adds these totals together and outputs it to standard output.
-//
-// By default, targzsize writes status messages to standard error.
-// Pass the '-no-progress' flag to prevent this.
-//
-// By default the standard output will contain a single number, representing the total size in bytes.
-// To instead use human readable units, pass the '-human' flag.
-// This flag also applies to status messages.
-package main
+// Package targzsize contains the main logic for the targzsize command
+package targzsize
 
 import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -28,38 +15,11 @@ import (
 	"github.com/pkg/errors"
 )
 
-var silentFlag bool
-var humanFlag bool
+//go:generate gogenlicense -p targzsize -n Notices -d notices.go github.com/tkw1536/targzsize
 
-func init() {
-	defer flag.Parse()
-
-	flag.BoolVar(&silentFlag, "no-progress", silentFlag, "Don't output status messages to stderr")
-	flag.BoolVar(&humanFlag, "human", humanFlag, "Output human units instead of bytes")
-}
-
-func main() {
-	// get list of files
-	files := flag.Args()
-	if len(files) == 0 {
-		log.Fatal("Need at least one file. ")
-	}
-
-	// handle all the files
-	var total big.Int
-	for _, filepath := range files {
-		if err := mainFile(filepath, &total, silentFlag, humanFlag); err != nil {
-			log.Fatalf("Error processing %s: %s\n", filepath, err)
-			return
-		}
-	}
-
-	// and write the total
-	log.Printf("%s\n", totalToString(&total, humanFlag))
-}
-
-// totalToString turns value into an optionally human-readable string
-func totalToString(value *big.Int, human bool) string {
+// TotalToString turns value into an optionally human-readable string.
+// When human is false, returns a simple string
+func TotalToString(value *big.Int, human bool) string {
 	if !human {
 		return value.String()
 	}
@@ -69,8 +29,8 @@ func totalToString(value *big.Int, human bool) string {
 
 const chanBufferSize = 100
 
-// mainFile handles a single file, adding the total to total.
-func mainFile(filepath string, total *big.Int, silent bool, human bool) error {
+// MainFile handles a single file, adding the total to total.
+func MainFile(filepath string, total *big.Int, silent bool, human bool) error {
 	if !silent {
 		log.Printf("Reading %s\n", filepath)
 	}
@@ -104,7 +64,7 @@ func WriteLines(lines <-chan StatusLine, human bool) context.Context {
 		defer cancel()
 
 		for item := range lines {
-			fmt.Fprintf(os.Stderr, "\033[2K\r%s %q", totalToString(&item.Total, human), item.Path)
+			fmt.Fprintf(os.Stderr, "\033[2K\r%s %q", TotalToString(&item.Total, human), item.Path)
 		}
 	}()
 
